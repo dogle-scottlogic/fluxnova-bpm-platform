@@ -16,6 +16,7 @@
   <packaging>pom</packaging>
   <properties>
     <version.spring-boot>4.0.5</version.spring-boot>
+    <version.spring-ai>2.0.0</version.spring-ai>
     <jacoco.skip>true</jacoco.skip>
   </properties>
 
@@ -48,6 +49,15 @@
         <artifactId>nimbus-jose-jwt</artifactId>
         <version>${version.nimbus-jose-jwt}</version>
       </dependency>
+
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${version.spring-ai}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
     </dependencies>
   </dependencyManagement>
 

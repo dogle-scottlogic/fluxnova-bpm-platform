@@ -85,6 +85,13 @@
       <artifactId>js</artifactId>
       <type>pom</type>
     </dependency>
+
+    <!-- Spring AI - Ollama provider for agentic subprocess plugin -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-ollama</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.graalvm.js</groupId>
       <artifactId>js-scriptengine</artifactId>

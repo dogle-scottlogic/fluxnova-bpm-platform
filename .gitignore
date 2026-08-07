@@ -27,3 +27,4 @@ camunda-h2-dbs
 
 internal
 configuration
+local/

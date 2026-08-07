@@ -25,6 +25,7 @@ import java.util.function.Supplier;
 
 import org.finos.fluxnova.bpm.client.ExternalTaskClient;
 import org.finos.fluxnova.bpm.client.ExternalTaskClientBuilder;
+import org.finos.fluxnova.bpm.client.interceptor.auth.BasicAuthProvider;
 import org.finos.fluxnova.bpm.client.util.PropertyUtil;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -45,9 +46,17 @@ public class ClientRule implements BeforeEachCallback, AfterEachCallback {
     this(() -> {
       String endpoint = properties.getProperty(FLUXNOVA_ENGINE_REST);
       String engine = properties.getProperty(FLUXNOVA_ENGINE_NAME);
-      return ExternalTaskClient.create()
+      ExternalTaskClientBuilder builder = ExternalTaskClient.create()
           .baseUrl(endpoint + engine)
           .lockDuration(LOCK_DURATION);
+
+      String username = properties.getProperty(FLUXNOVA_ENGINE_USERNAME);
+      String password = properties.getProperty(FLUXNOVA_ENGINE_PASSWORD);
+      if (username != null && password != null) {
+        builder.addInterceptor(new BasicAuthProvider(username, password));
+      }
+
+      return builder;
     });
   }
 
