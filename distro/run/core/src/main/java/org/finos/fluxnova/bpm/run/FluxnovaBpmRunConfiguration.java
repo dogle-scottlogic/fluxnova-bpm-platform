@@ -26,12 +26,18 @@ import org.finos.fluxnova.bpm.run.property.FluxnovaBpmRunProperties;
 import org.finos.fluxnova.bpm.spring.boot.starter.FluxnovaBpmAutoConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.sql.init.dependency.DependsOnDatabaseInitialization;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.ReactorClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
+import reactor.netty.http.client.HttpClient;
 
+import java.time.Duration;
 import java.util.List;
 
 @EnableConfigurationProperties(FluxnovaBpmRunProperties.class)
@@ -67,6 +73,20 @@ public class FluxnovaBpmRunConfiguration {
   @Bean
   public FluxnovaBpmRunDeploymentConfiguration fluxnovaDeploymentConfiguration(@Value("${camunda.deploymentDir:#{null}}") String deploymentDir) {
     return new FluxnovaBpmRunDeploymentConfiguration(deploymentDir);
+  }
+
+  /**
+   * Provides a RestClient.Builder with a generous read timeout for Reactor Netty.
+   * Spring AI's OllamaApiAutoConfiguration picks this up via ObjectProvider<RestClient.Builder>
+   * so that slow local LLM responses (e.g. llama3.1 on first load) do not time out.
+   */
+  @Bean
+  @ConditionalOnMissingBean(RestClient.Builder.class)
+  @ConditionalOnClass(name = "reactor.netty.http.client.HttpClient")
+  public RestClient.Builder ollamaRestClientBuilder(
+      @Value("${fluxnova.ai.ollama.read-timeout:300s}") Duration readTimeout) {
+    HttpClient httpClient = HttpClient.create().responseTimeout(readTimeout);
+    return RestClient.builder().requestFactory(new ReactorClientHttpRequestFactory(httpClient));
   }
 
 }
