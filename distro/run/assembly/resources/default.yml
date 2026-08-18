@@ -19,7 +19,7 @@ fluxnova.bpm:
       deploy-changed-only: true
 # https://docs.camunda.org/manual/latest/user-guide/camunda-bpm-run/#example-application
     example:
-      enabled: true
+      enabled: false
 # Authentication - uncomment one of the following sections to enable REST API authentication
 #
 # Option 1: HTTP Basic authentication
