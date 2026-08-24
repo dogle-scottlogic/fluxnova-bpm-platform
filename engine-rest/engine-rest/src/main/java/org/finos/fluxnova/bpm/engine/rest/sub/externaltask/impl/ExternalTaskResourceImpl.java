@@ -20,6 +20,7 @@ import jakarta.ws.rs.core.Response.Status;
 
 import org.finos.fluxnova.bpm.engine.BadUserRequestException;
 import org.finos.fluxnova.bpm.engine.ExternalTaskService;
+import org.finos.fluxnova.bpm.engine.OptimisticLockingException;
 import org.finos.fluxnova.bpm.engine.ProcessEngine;
 import org.finos.fluxnova.bpm.engine.exception.NotFoundException;
 import org.finos.fluxnova.bpm.engine.externaltask.ExternalTask;
@@ -44,6 +45,8 @@ import tools.jackson.databind.ObjectMapper;
  *
  */
 public class ExternalTaskResourceImpl implements ExternalTaskResource {
+
+  protected static final int MAX_RETRIES_ON_CONCURRENT_MODIFICATION = 3;
 
   protected ProcessEngine engine;
   protected String externalTaskId;
@@ -115,13 +118,28 @@ public class ExternalTaskResourceImpl implements ExternalTaskResource {
     VariableMap variables = VariableValueDto.toMap(dto.getVariables(), engine, objectMapper);
     VariableMap localVariables = VariableValueDto.toMap(dto.getLocalVariables(), engine, objectMapper);
 
-    try {
-      externalTaskService.complete(externalTaskId, dto.getWorkerId(), variables, localVariables);
-    } catch (NotFoundException e) {
-      throw new RestException(Status.NOT_FOUND, e, "External task with id " + externalTaskId + " does not exist");
-    } catch (BadUserRequestException e) {
-      throw new RestException(Status.BAD_REQUEST, e, e.getMessage());
+    OptimisticLockingException lastOle = null;
+    for (int attempt = 0; attempt <= MAX_RETRIES_ON_CONCURRENT_MODIFICATION; attempt++) {
+      try {
+        externalTaskService.complete(externalTaskId, dto.getWorkerId(), variables, localVariables);
+        return;
+      } catch (NotFoundException e) {
+        throw new RestException(Status.NOT_FOUND, e, "External task with id " + externalTaskId + " does not exist");
+      } catch (BadUserRequestException e) {
+        throw new RestException(Status.BAD_REQUEST, e, e.getMessage());
+      } catch (OptimisticLockingException e) {
+        lastOle = e;
+        if (attempt < MAX_RETRIES_ON_CONCURRENT_MODIFICATION) {
+          try {
+            Thread.sleep(50L * (attempt + 1));
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw e;
+          }
+        }
+      }
     }
+    throw lastOle;
 
   }
 

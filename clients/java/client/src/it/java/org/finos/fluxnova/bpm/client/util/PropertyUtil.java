@@ -27,6 +27,8 @@ public class PropertyUtil {
   public static final String DEFAULT_PROPERTIES_PATH = "integration-rules.properties";
   public static final String FLUXNOVA_ENGINE_REST = "fluxnova.engine.rest";
   public static final String FLUXNOVA_ENGINE_NAME = "fluxnova.engine.name";
+  public static final String FLUXNOVA_ENGINE_USERNAME = "fluxnova.engine.username";
+  public static final String FLUXNOVA_ENGINE_PASSWORD = "fluxnova.engine.password";
 
   private static Logger logger = LoggerFactory.getLogger(PropertyUtil.class);
 

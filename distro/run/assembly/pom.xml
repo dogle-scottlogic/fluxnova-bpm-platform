@@ -131,6 +131,20 @@
       <artifactId>postgresql</artifactId>
     </dependency>
 
+    <!-- Bundle the OpenTelemetry engine plugin and its runtime dependencies (io.opentelemetry:*,
+         okhttp, okio, kotlin-stdlib) into userlib by default. These are declared "provided" scope
+         further up the dependency chain (agent-otel -> fluxnova-engine-plugin-otel) because
+         fluxnova-bpm-run-core is consumed as a pre-built uberjar above, so without this explicit,
+         non-excluded dependency here they would never make it into the distributable. Without
+         them, the mandatory agentOrchestrationJobHandler bean fails to start with a
+         NoClassDefFoundError on OpenTelemetry classes, regardless of whether the plugin is
+         actually enabled in default.yml. -->
+    <dependency>
+      <groupId>org.finos.fluxnova.bpm</groupId>
+      <artifactId>fluxnova-engine-plugin-otel</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
   </dependencies>
 
   <build>

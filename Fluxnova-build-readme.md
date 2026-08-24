@@ -56,6 +56,27 @@ All Fluxnova dependencies are now public and published to Maven Central.
 - All dependencies are resolved from Maven Central.
 - Artifacts from each build will be stored in your local Maven repository and used by subsequent builds.
 
+### Building the Agentic Subprocess Plugins from the `fluxnova-plugins` Fork
+
+The agentic subprocess engine plugins (`fluxnova-engine-plugins-ai-agent-*`) are consumed as `1.0.0-SNAPSHOT`
+dependencies. Because that version is a plain (non-timestamped) SNAPSHOT coordinate, it could in principle be
+resolved from *any* build published to the public Sonatype OSSRH snapshots repository under that coordinate — not
+necessarily one built from the [dogle-scottlogic/fluxnova-plugins](https://github.com/dogle-scottlogic/fluxnova-plugins)
+fork. `mvn -U` (force update) in particular can silently overwrite a locally built copy with whatever happens to be
+published remotely.
+
+To guarantee the plugins are built from this fork, use the provided helper script instead of building
+`fluxnova-bpm-platform` directly:
+
+```bash
+./build-with-plugins.sh -DskipTests -DskipITs
+```
+
+This clones/updates `fluxnova-plugins` (default branch `eval-upates`, configurable via `FLUXNOVA_PLUGINS_BRANCH`),
+installs it into your local Maven repository, then builds `fluxnova-bpm-platform` **without** `-U`, so Maven reuses
+the freshly installed local jars rather than checking the network. See the comments at the top of
+`build-with-plugins.sh` for configuration options (repo URL, branch, checkout location).
+
 -----------------------------------------------------------------------------------------------------------------------
 
 ## Building with GitHub Actions on FINOS
@@ -225,6 +246,50 @@ docker run -p 8080:8080 \
 ```
 
 Replace the values as needed for MySQL. Any other Spring Boot configuration can be passed as environment variables.
+
+#### Building the Docker Image Locally
+
+The repository root `Dockerfile` builds the Spring Boot image from your own local build output, so you can produce and
+run a custom image without waiting on the official published image.
+
+1. Build and package the project (skipping tests for a faster local build):
+   ```bash
+   mvn clean install -DskipTests -DskipITs
+   ```
+   This produces `distro/run/distro/target/fluxnova-bpm-run-*.zip`, which the `Dockerfile` unpacks.
+
+   To guarantee the agentic subprocess plugins are built from the `dogle-scottlogic/fluxnova-plugins` fork rather
+   than a same-versioned SNAPSHOT from elsewhere, use `./build-with-plugins.sh -DskipTests -DskipITs` instead — see
+   [Building the Agentic Subprocess Plugins from the `fluxnova-plugins` Fork](#building-the-agentic-subprocess-plugins-from-the-fluxnova-plugins-fork) above.
+2. Build the image:
+   ```bash
+   docker build -t fluxnova-bpm-platform:local .
+   ```
+3. Run it (default H2 database, same as the published image):
+   ```bash
+   docker run -p 8080:8080 fluxnova-bpm-platform:local
+   ```
+
+**Overriding configuration without rebuilding the image:** the engine configuration lives at `/fluxnova/configuration`
+inside the image. Mount a replacement file or directory over it at `docker run` time to change configuration (e.g.
+`default.yml`) or add extra plugin/engine jars to `configuration/userlib` — no rebuild required:
+
+```bash
+# Override just the configuration file
+docker run -p 8080:8080 \
+  -v "$(pwd)/my-default.yml:/fluxnova/configuration/default.yml:ro" \
+  fluxnova-bpm-platform:local
+
+# Override the whole configuration directory (e.g. custom default.yml plus extra userlib jars)
+docker run -p 8080:8080 \
+  -v "$(pwd)/my-config:/fluxnova/configuration:ro" \
+  fluxnova-bpm-platform:local
+```
+
+> **Note:** the OpenTelemetry process engine plugin's jars (`fluxnova-engine-plugin-otel`, the `io.opentelemetry:*`
+> artifacts, `okhttp`/`okio`, and `kotlin-stdlib`) are bundled into `configuration/userlib` as part of the standard
+> Maven assembly (see `distro/run/assembly/pom.xml`/`assembly.xml`), so enabling this plugin in your configuration
+> works out of the box — no extra `userlib` mount is required.
 
 #### Notes
 

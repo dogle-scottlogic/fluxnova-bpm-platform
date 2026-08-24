@@ -50,6 +50,7 @@ import jakarta.ws.rs.core.Response.Status;
 import org.finos.fluxnova.bpm.engine.AuthorizationException;
 import org.finos.fluxnova.bpm.engine.BadUserRequestException;
 import org.finos.fluxnova.bpm.engine.ExternalTaskService;
+import org.finos.fluxnova.bpm.engine.OptimisticLockingException;
 import org.finos.fluxnova.bpm.engine.ProcessEngineException;
 import org.finos.fluxnova.bpm.engine.batch.Batch;
 import org.finos.fluxnova.bpm.engine.exception.NotFoundException;
@@ -1040,6 +1041,53 @@ public class ExternalTaskRestServiceInteractionTest extends AbstractRestServiceT
       .body("message", equalTo("aMessage"))
     .when()
       .post(COMPLETE_EXTERNAL_TASK_URL);
+  }
+
+  @Test
+  public void testCompleteRetriesOnOptimisticLockingException() {
+    doThrow(new OptimisticLockingException("concurrent modification"))
+      .doNothing()
+      .when(externalTaskService)
+      .complete(any(), any(), any(), any());
+
+    Map<String, String> parameters = new HashMap<>();
+    parameters.put("workerId", "aWorkerId");
+
+    given()
+      .contentType(POST_JSON_CONTENT_TYPE)
+      .body(parameters)
+      .pathParam("id", "anExternalTaskId")
+    .then()
+      .expect()
+      .statusCode(Status.NO_CONTENT.getStatusCode())
+    .when()
+      .post(COMPLETE_EXTERNAL_TASK_URL);
+
+    verify(externalTaskService, Mockito.times(2)).complete("anExternalTaskId", "aWorkerId", null, null);
+  }
+
+  @Test
+  public void testCompleteThrowsOptimisticLockingExceptionAfterMaxRetries() {
+    doThrow(new OptimisticLockingException("concurrent modification"))
+      .when(externalTaskService)
+      .complete(any(), any(), any(), any());
+
+    Map<String, String> parameters = new HashMap<>();
+    parameters.put("workerId", "aWorkerId");
+
+    given()
+      .contentType(POST_JSON_CONTENT_TYPE)
+      .body(parameters)
+      .pathParam("id", "anExternalTaskId")
+    .then()
+      .expect()
+      .statusCode(Status.INTERNAL_SERVER_ERROR.getStatusCode())
+      .body("type", equalTo(OptimisticLockingException.class.getSimpleName()))
+      .body("message", equalTo("concurrent modification"))
+    .when()
+      .post(COMPLETE_EXTERNAL_TASK_URL);
+
+    verify(externalTaskService, Mockito.times(4)).complete("anExternalTaskId", "aWorkerId", null, null);
   }
 
   @Test

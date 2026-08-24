@@ -1,0 +1,3 @@
+# Ensure shell scripts always use LF line endings, even when checked out on
+# Windows, so they run correctly in bash/sh (e.g. inside Docker containers).
+*.sh text eol=lf
