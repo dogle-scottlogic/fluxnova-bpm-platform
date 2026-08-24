@@ -52,6 +52,14 @@
         <include>org.apache.groovy:groovy-dateutil:jar:*</include>
         <include>org.apache.groovy:groovy-datetime:jar:*</include>
         <include>org.postgresql:postgresql:jar:*</include>
+        <!-- OpenTelemetry engine plugin + its runtime dependencies, see the corresponding
+             dependency declaration/comment in pom.xml for why this is needed. -->
+        <include>org.finos.fluxnova.bpm:fluxnova-engine-plugin-otel</include>
+        <include>io.opentelemetry:*</include>
+        <include>com.squareup.okhttp3:*</include>
+        <include>com.squareup.okio:*</include>
+        <include>org.jetbrains.kotlin:*</include>
+        <include>org.jetbrains:annotations</include>
       </includes>
     </dependencySet>
   </dependencySets>

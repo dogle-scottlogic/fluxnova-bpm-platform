@@ -1,3 +1,10 @@
+# Fluxnova BPM Platform (Spring Boot / "Run") container image.
+#
+# Build prerequisite: package the project first (see build-with-plugins.sh), which
+# produces distro/run/distro/target/fluxnova-bpm-run-*.zip for this image to unpack.
+# The default (last) stage is the Alpine image, which includes curl for health checks.
+# Mount over /fluxnova/configuration (or a file in it) to change configuration at runtime.
+
 ARG DOCKER_REGISTRY=docker.io
 
 FROM ${DOCKER_REGISTRY}/alpine:3 AS app-packager
@@ -16,6 +23,11 @@ COPY distro/run/distro/target/fluxnova-bpm-run-*.zip /tmp/fluxnova-bpm-run.zip
 RUN unzip /tmp/fluxnova-bpm-run.zip -d /fluxnova && rm -f /tmp/fluxnova-bpm-run.zip
 
 COPY docker-script.sh /fluxnova/docker-script.sh
+
+# Normalize line endings (the distro may be built from a Windows checkout with CRLF scripts)
+# and make the scripts executable.
+RUN find /fluxnova -name "*.sh" -exec sed -i 's/\r$//' {} + \
+    && chmod +x /fluxnova/*.sh /fluxnova/internal/*.sh
 
 ###### DNF BASED IMAGE ######
 FROM ${DOCKER_REGISTRY}/amazoncorretto:21 AS corretto21
@@ -73,6 +85,9 @@ COPY --chown=4001:4001 --from=app-packager /fluxnova /fluxnova
 WORKDIR /fluxnova
 
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+    CMD curl -fs http://localhost:8080/engine-rest/engine > /dev/null || exit 1
 
 USER 4001
 
