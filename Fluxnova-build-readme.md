@@ -215,10 +215,20 @@ run a custom image without waiting on the official published image.
    VM/WSL, copy those three into a small directory (keeping the `distro/run/distro/target/` path) and build from there,
    rather than uploading the whole checkout as build context.
 
-   **Published `fluxnova-edd-platform` images:** `2.0.0` is Fluxnova 3.1.1 with the fork's plugins (built AMD64-only
-   so far). Tag and push it as `ghcr.io/dogle-scottlogic/fluxnova-edd-platform:<version>`; the image carries
-   `org.opencontainers.image.revision` and `org.finos.fluxnova.plugins.revision` labels recording the two commits it
-   was built from.
+   **Published `fluxnova-edd-platform` images:** `2.0.0` is Fluxnova 3.1.1 with the fork's plugins, published as a
+   multi-arch index (`linux/amd64` + `linux/arm64`) at `ghcr.io/dogle-scottlogic/fluxnova-edd-platform:<version>`.
+   Each image carries `org.opencontainers.image.revision` and `org.finos.fluxnova.plugins.revision` labels recording
+   the two commits it was built from. The distro zip is pure Java, so both architectures are built from the same zip
+   and `Dockerfile`; only the base image differs. On an x86 host, ARM64 builds need QEMU user-mode emulation (e.g.
+   `qemu-user-binfmt` on Ubuntu/WSL; check with `podman run --rm --platform linux/arm64 alpine uname -m`). To publish:
+   ```bash
+   podman build --platform linux/amd64 -t fluxnova-edd-platform:<version>-amd64 <context>
+   podman build --platform linux/arm64 -t fluxnova-edd-platform:<version>-arm64 <context>
+   podman manifest create fluxnova-edd-platform:<version>
+   podman manifest add fluxnova-edd-platform:<version> containers-storage:localhost/fluxnova-edd-platform:<version>-amd64
+   podman manifest add fluxnova-edd-platform:<version> containers-storage:localhost/fluxnova-edd-platform:<version>-arm64
+   podman manifest push --all fluxnova-edd-platform:<version> docker://ghcr.io/dogle-scottlogic/fluxnova-edd-platform:<version>
+   ```
 3. Run it (default H2 database, same as the published image):
    ```bash
    docker run -p 8080:8080 fluxnova-bpm-platform:local
