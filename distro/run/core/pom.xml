@@ -93,10 +93,15 @@
       <type>pom</type>
     </dependency>
 
-    <!-- Spring AI - Ollama provider for agentic subprocess plugin -->
+    <!-- Spring AI providers for the agentic subprocess plugin; spring.ai.model.chat selects
+         which one is active (ollama or openai). -->
     <dependency>
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-starter-model-ollama</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-openai</artifactId>
     </dependency>
 
     <dependency>

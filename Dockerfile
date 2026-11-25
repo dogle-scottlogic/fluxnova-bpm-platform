@@ -25,9 +25,9 @@ RUN unzip /tmp/fluxnova-bpm-run.zip -d /fluxnova && rm -f /tmp/fluxnova-bpm-run.
 COPY docker-script.sh /fluxnova/docker-script.sh
 
 # Normalize line endings (the distro may be built from a Windows checkout with CRLF scripts)
-# and make the scripts executable.
+# and give the scripts explicit permissions (a Windows build context can arrive world-writable).
 RUN find /fluxnova -name "*.sh" -exec sed -i 's/\r$//' {} + \
-    && chmod +x /fluxnova/*.sh /fluxnova/internal/*.sh
+    && chmod 755 /fluxnova/*.sh /fluxnova/internal/*.sh
 
 ###### DNF BASED IMAGE ######
 FROM ${DOCKER_REGISTRY}/amazoncorretto:21 AS corretto21

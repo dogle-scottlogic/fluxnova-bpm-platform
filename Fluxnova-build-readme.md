@@ -65,17 +65,32 @@ necessarily one built from the [dogle-scottlogic/fluxnova-plugins](https://githu
 fork. `mvn -U` (force update) in particular can silently overwrite a locally built copy with whatever happens to be
 published remotely.
 
-To guarantee the plugins are built from this fork, use the provided helper script instead of building
-`fluxnova-bpm-platform` directly:
+The two repositories also depend on each other: this repo's `engine` module depends on
+`fluxnova-engine-plugins-ai-agentic-subprocess`, while the plugins depend on `fluxnova-engine-plugin-otel`, which is
+built only here. To guarantee the plugins are built from the fork, and in the right order, use the provided helper
+script instead of building `fluxnova-bpm-platform` directly:
 
 ```bash
-./build-with-plugins.sh -DskipTests -DskipITs
+./build-with-plugins.sh clean install -DskipTests -DskipITs
 ```
 
-This clones/updates `fluxnova-plugins` (default branch `eval-upates`, configurable via `FLUXNOVA_PLUGINS_BRANCH`),
-installs it into your local Maven repository, then builds `fluxnova-bpm-platform` **without** `-U`, so Maven reuses
-the freshly installed local jars rather than checking the network. See the comments at the top of
-`build-with-plugins.sh` for configuration options (repo URL, branch, checkout location).
+It expects the plugins fork checked out next to this repository (`../fluxnova-plugins`) and builds in three stages:
+
+1. Installs this repo's parent POMs and the OTEL engine plugin (compiled against the released `fluxnova-engine` of the
+   same version from Maven Central).
+2. Installs the agentic subprocess plugins from `../fluxnova-plugins/agentic-subprocess/pom.xml`, **with** their tests
+   unless `FLUXNOVA_PLUGINS_SKIP_TESTS=true`. (The `fluxnova-plugins` root POM has no modules, so building it alone
+   installs only the parent POM.)
+3. Builds `fluxnova-bpm-platform` with the arguments you pass, **without** `-U`, so Maven reuses the freshly installed
+   local jars rather than checking the network.
+
+An existing plugins checkout is built as-is, including local unpushed commits; it is never reset or switched. If it
+is missing, the script clones branch `upgrade-3.1.1` (configurable via `FLUXNOVA_PLUGINS_BRANCH`). See the comments at
+the top of `build-with-plugins.sh` for the other options.
+
+**Windows:** clone this repository with `core.autocrlf=false` (for example
+`git clone -c core.autocrlf=false -c core.longpaths=true ...`). With `autocrlf=true` the webapp's Prettier lint
+rejects the CRLF line endings and `npm run build` fails in `fluxnova-webapp-root`.
 
 -----------------------------------------------------------------------------------------------------------------------
 
@@ -189,12 +204,21 @@ run a custom image without waiting on the official published image.
    This produces `distro/run/distro/target/fluxnova-bpm-run-*.zip`, which the `Dockerfile` unpacks.
 
    To guarantee the agentic subprocess plugins are built from the `dogle-scottlogic/fluxnova-plugins` fork rather
-   than a same-versioned SNAPSHOT from elsewhere, use `./build-with-plugins.sh -DskipTests -DskipITs` instead — see
+   than a same-versioned SNAPSHOT from elsewhere, use `./build-with-plugins.sh clean install -DskipTests -DskipITs`
+   instead — see
    [Building the Agentic Subprocess Plugins from the `fluxnova-plugins` Fork](#building-the-agentic-subprocess-plugins-from-the-fluxnova-plugins-fork) above.
-2. Build the image:
+2. Build the image (the default, last stage is the Alpine image, which includes `curl` for health checks):
    ```bash
    docker build -t fluxnova-bpm-platform:local .
    ```
+   The image only needs `Dockerfile`, `docker-script.sh` and the distro zip. With a remote engine such as Podman on a
+   VM/WSL, copy those three into a small directory (keeping the `distro/run/distro/target/` path) and build from there,
+   rather than uploading the whole checkout as build context.
+
+   **Published `fluxnova-edd-platform` images:** `2.0.0` is Fluxnova 3.1.1 with the fork's plugins (built AMD64-only
+   so far). Tag and push it as `ghcr.io/dogle-scottlogic/fluxnova-edd-platform:<version>`; the image carries
+   `org.opencontainers.image.revision` and `org.finos.fluxnova.plugins.revision` labels recording the two commits it
+   was built from.
 3. Run it (default H2 database, same as the published image):
    ```bash
    docker run -p 8080:8080 fluxnova-bpm-platform:local
